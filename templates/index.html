@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sales Prediction</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6">
+
+  <!-- Form Card (unchanged design) -->
+  <div class="w-full max-w-md bg-white/20 backdrop-blur-lg rounded-2xl shadow-xl p-8 text-center text-white">
+    <h2 class="text-3xl font-bold mb-6">💹 Sales Prediction</h2>
+    
+    <!-- note: we give the form an id so JS can handle it -->
+    <form id="predict-form" action="/predict" method="post" class="space-y-4">
+      <input id="tv" type="number" name="tv" placeholder="📺 TV Budget (e.g. 150)" required step="any"
+        class="w-full px-4 py-3 rounded-xl border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-400">
+
+      <input id="radio" type="number" name="radio" placeholder="📻 Radio Budget (e.g. 30)" required step="any"
+        class="w-full px-4 py-3 rounded-xl border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-400">
+
+      <input id="newspaper" type="number" name="newspaper" placeholder="📰 Newspaper Budget (e.g. 20)" required step="any"
+        class="w-full px-4 py-3 rounded-xl border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-pink-400">
+
+      <button type="submit"
+        class="w-full py-3 mt-4 bg-gradient-to-r from-pink-500 to-purple-500 rounded-xl text-lg font-semibold text-white shadow-lg hover:from-purple-500 hover:to-pink-500 transition transform hover:scale-105">
+        Predict Sales
+      </button>
+    </form>
+  </div>
+
+  <!-- Separate Result Card (initially hidden) -->
+  <div id="result-card" class="w-full max-w-md mt-6 bg-white/30 backdrop-blur-lg rounded-2xl shadow-xl p-6 text-center text-gray-900 hidden">
+    <h3 class="text-2xl font-bold mb-2">📊 Prediction Result</h3>
+    <p id="result-text" class="text-lg font-semibold mb-2"></p>
+    <p id="result-sub" class="text-sm text-gray-700">This shows predicted sales based on your budgets.</p>
+  </div>
+
+  <!-- JS: submit via fetch and show result card -->
+  <script>
+    const form = document.getElementById('predict-form');
+    const resultCard = document.getElementById('result-card');
+    const resultText = document.getElementById('result-text');
+    const resultSub = document.getElementById('result-sub');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // collect values
+      const tv = document.getElementById('tv').value;
+      const radio = document.getElementById('radio').value;
+      const newspaper = document.getElementById('newspaper').value;
+
+      // basic front-end validation
+      if (tv === "" || radio === "" || newspaper === "") {
+        alert("Please enter all budgets.");
+        return;
+      }
+
+      // disable button while loading
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.classList.add('opacity-60', 'cursor-not-allowed');
+
+      try {
+        const resp = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tv, radio, newspaper })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error || 'Server error');
+        }
+
+        const data = await resp.json();
+
+        // fill result card and show it
+        resultText.textContent = data.prediction_text || (data.predicted_sales + ' — ' + data.predicted_percentage + '%');
+        // optional extra info below
+        resultSub.textContent = `Sales: ${Number(data.predicted_sales).toFixed(2)}  ·  ${Number(data.predicted_percentage).toFixed(2)}% of max`;
+
+        resultCard.classList.remove('hidden');
+        // smooth scroll result into view
+        resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      } catch (error) {
+        alert('Prediction failed: ' + (error.message || 'unknown error'));
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-60', 'cursor-not-allowed');
+      }
+    });
+  </script>
+
+</body>
+</html>
